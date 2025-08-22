@@ -4,13 +4,12 @@ import random
 import requests
 import logging
 import tempfile
-import subprocess
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
 # Настройки
 COMFYUI_API_URL = "http://localhost:8188"
-BOT_TOKEN = "" # Замените на свой токен
+BOT_TOKEN = ""# Замените на свой токен
 WORKFLOW_FILE = "wan_video_workflow.json"
 
 # Настройка логирования
@@ -188,7 +187,7 @@ async def generate_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "type": "output"
             }
             
-            # Скачиваем видео
+            # Скачиваем анимированный WEBP
             video_response = requests.get(
                 f"{COMFYUI_API_URL}/view",
                 params=params,
@@ -201,26 +200,16 @@ async def generate_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 temp_file.write(video_response.content)
                 temp_path = temp_file.name
 
-            # Конвертируем WEBP в MP4
-            mp4_path = temp_path.replace('.webp', '.mp4')
-            subprocess.run([
-                'ffmpeg', '-i', temp_path,
-                '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
-                '-crf', '23', '-preset', 'fast',
-                mp4_path
-            ], check=True)
-
-            # Отправляем видео
-            with open(mp4_path, 'rb') as video_file:
-                await update.message.reply_video(
-                    video=video_file,
+            # Отправляем анимированный WEBP как документ
+            with open(temp_path, 'rb') as video_file:
+                await update.message.reply_document(
+                    document=video_file,
                     caption=f"✅ Видео для: {prompt_text}",
-                    supports_streaming=True
+                    filename="animation.webp"
                 )
             
-            # Удаляем временные файлы
+            # Удаляем временный файл
             os.unlink(temp_path)
-            os.unlink(mp4_path)
             await status_msg.delete()
             
         else:
